@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────────────────────────────────
+   Obsidian Terminal — design tokens
+   ─────────────────────────────────────────────────────────── */
+@theme {
+  /* Superfici */
+  --color-obsidian: #050507;
+  --color-obsidian-card: #0c0c10;
+  --color-obsidian-raised: #13131a;
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.16);
+
+  /* Accenti */
+  --color-emerald-cyber: #10b981;
+  --color-indigo-pulse: #6366f1;
+  --color-amber-glow: #f59e0b;
+
+  /* Testo (contrasto ≥ 4.5:1 su #0C0C10) */
+  --color-ink: #ececf1;
+  --color-ink-dim: #a0a0ad;
+  --color-ink-mute: #7e7e8b;
+
+  /* Font: Geist per i testi, JetBrains Mono per metadati, tag e codice */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background-color: var(--color-obsidian);
+}
+
+body {
+  min-height: 100dvh;
+  background-color: var(--color-obsidian);
+  background-image:
+    radial-gradient(60rem 28rem at 15% -10%, rgba(99, 102, 241, 0.1), transparent 70%),
+    radial-gradient(48rem 24rem at 90% -5%, rgba(16, 185, 129, 0.08), transparent 70%);
+  background-repeat: no-repeat;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+/*
+ * Ingresso a cascata: le card partono nascoste solo se l'utente non ha richiesto
+ * movimento ridotto; GSAP le rivela una per una (vedi components/feed-list.tsx).
+ * Senza JavaScript il contenuto resta visibile grazie al <noscript> nel layout.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+}
+
+.live-dot {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+  }
+}
