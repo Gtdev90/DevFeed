@@ -1,7 +1,7 @@
 # PULSE.DEV
 
 Aggregatore di notizie tech con design system dark **Obsidian Terminal**.
-Fase 1: foundation, design system e ingestion reale. Fase 2: motore vettoriale a 12 dimensioni e ranking epsilon-greedy.
+Fase 1: foundation, design system e ingestion reale. Fase 2: motore vettoriale a 12 dimensioni e ranking epsilon-greedy. Fase 3: Tech Stories e doppia modalità di lettura (Deck / Stream).
 
 ## Avvio
 
@@ -64,3 +64,23 @@ skip `−0.15·V`, sempre seguiti da normalizzazione. Ogni interazione vale una 
 **Aggiornamenti.** Le percentuali di Match e il radar cambiano subito a ogni azione. L'ordine delle card
 cambia solo con "Ricalcola Feed" o quando si muove lo slider ε / si usa un override (+/−), con
 riposizionamento GSAP Flip.
+
+## Tech Stories e modalità Deck / Stream (Fase 3)
+
+| Percorso | Ruolo |
+| --- | --- |
+| `app/api/stories/route.ts` | `GET /api/stories[?follow=a,b][&presets=0]`: storie degli autori (Algolia `search_by_date`) |
+| `lib/stories-core.ts` | Parte pura e testata: preset, parsing degli handle, normalizzazione, regola 72 h |
+| `lib/stories.ts` | Fetch con cache di 10 min per autore, `Promise.allSettled` |
+| `lib/stories-store.ts` | `viewedStoryIds` e autori seguiti in IndexedDB |
+| `components/stories-bar.tsx`, `story-ring.tsx` | Carosello con anello GSAP (ciano→indaco, pulsante se non letto) e "+ Segui" |
+| `components/story-viewer.tsx` | Viewer a schermo intero: timeline 8 s, tap & hold, tap 30/70, swipe con `Observer` |
+| `components/feed-experience.tsx` | Modalità Deck (Observer, drag elastico) e Stream, con passaggio via GSAP Flip |
+
+**Storie.** Una "storia" è un post *o un commento* dell'autore su Hacker News (gli URL `author_*` restituiscono
+entrambi). Per i siti (jvns.ca, danluu.com) si scaricano 20 hit e si tengono solo i link che puntano davvero al
+dominio. L'anello pulsa solo se c'è almeno una storia non vista nelle ultime 72 ore. Si può seguire qualsiasi
+username HN (`tptacek`) o sito (`paulgraham.com`); la scelta è salvata in IndexedDB.
+
+**Deck.** Una card per schermata: rotella, trascinamento (con rotazione e scala elastiche), tasti ↑ ↓ o pulsanti.
+Soglia di 60 px, una sola card per gesto. Esc o ✕ per tornare allo Stream.

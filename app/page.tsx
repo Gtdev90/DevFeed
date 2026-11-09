@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Activity } from "lucide-react";
 import { FeedSection } from "@/components/feed-section";
 import { FeedSkeleton } from "@/components/feed-skeleton";
+import { StoriesSection, StoriesSkeleton } from "@/components/stories-section";
 
 export default function HomePage() {
   return (
@@ -23,6 +24,10 @@ export default function HomePage() {
           feed live
         </p>
       </header>
+
+      <Suspense fallback={<StoriesSkeleton />}>
+        <StoriesSection />
+      </Suspense>
 
       <main className="pt-10">
         <div className="mb-10 max-w-3xl space-y-3">

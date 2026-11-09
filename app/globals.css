@@ -16,6 +16,7 @@
   --color-indigo-pulse: #6366f1;
   --color-amber-glow: #f59e0b;
   --color-violet-archive: #8b5cf6;
+  --color-cyan-pulse: #22d3ee;
 
   /* Testo (contrasto ≥ 4.5:1 su #0C0C10) */
   --color-ink: #ececf1;
@@ -76,6 +77,11 @@ body {
   animation: pulse-ring 1.8s ease-out infinite;
 }
 
+/* Con un overlay modale aperto nulla deve animarsi sotto il blur dello sfondo. */
+body:has([role="dialog"]) .live-dot {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .live-dot {
     animation: none;
@@ -85,4 +91,13 @@ body {
 /* Slider "Tasso di Serendipità" */
 input[type="range"].epsilon {
   accent-color: var(--color-emerald-cyber);
+}
+
+/* Carosello orizzontale senza barra di scorrimento visibile */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

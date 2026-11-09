@@ -60,18 +60,26 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
+/** Spezza l'HTML di HN (paragrafi `<p>`) in paragrafi di testo semplice. */
+export function htmlToParagraphs(html: string): string[] {
+  return html
+    .split(/<p>|<\/p>|<br\s*\/?>/i)
+    .map((part) => stripHtml(part))
+    .filter((part) => part !== "");
+}
+
 export function snippet(text: string, max = 280): string {
   return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
 }
 
 /** Errore con il codice HTTP, per diagnosticare i fallimenti delle singole fonti. */
 export class SourceError extends Error {
-  constructor(
-    readonly source: string,
-    message: string,
-  ) {
+  readonly source: string;
+
+  constructor(source: string, message: string) {
     super(`${source}: ${message}`);
     this.name = "SourceError";
+    this.source = source;
   }
 }
 
