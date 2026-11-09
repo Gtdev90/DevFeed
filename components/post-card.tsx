@@ -1,4 +1,4 @@
-import { ArrowUp, Bookmark, ExternalLink, EyeOff, MessageSquare, ThumbsUp } from "lucide-react";
+import { ArrowUp, BookOpen, Bookmark, ExternalLink, EyeOff, MessageSquare, ThumbsUp } from "lucide-react";
 import type { TechPost } from "@/types/feed";
 import { formatCount, formatPostDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,10 @@ interface PostCardProps {
   bookmarked: boolean;
   /** Finché true la card parte nascosta, in attesa dell'ingresso GSAP. */
   reveal: boolean;
+  /** Titolo da mostrare (tradotto, se la traduzione dei titoli è attiva). */
+  displayTitle?: string;
+  /** Apre il drawer con sintesi e fonte originale. */
+  onInspect: (post: TechPost) => void;
   /** "stream" = card in lista; "deck" = card a tutto schermo (modalità Reel). */
   variant?: "stream" | "deck";
   onLike: (post: TechPost) => void;
@@ -70,6 +74,8 @@ export function PostCard({
   bookmarked,
   reveal,
   variant = "stream",
+  displayTitle,
+  onInspect,
   onLike,
   onBookmark,
   onHide,
@@ -117,8 +123,17 @@ export function PostCard({
           href={post.url}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => onRead(post)}
+          onClick={(event) => {
+            // Click normale: apre il drawer in-app. Con modificatori (nuova scheda) resta il link.
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+              onRead(post);
+              return;
+            }
+            event.preventDefault();
+            onInspect(post);
+          }}
           onAuxClick={() => onRead(post)}
+          title={displayTitle && displayTitle !== post.title ? `Originale: ${post.title}` : undefined}
           // In lista l'intera card è cliccabile; nel Deck il link resta sul titolo per non
           // bloccare i gesti di trascinamento.
           className={cn(
@@ -126,7 +141,7 @@ export function PostCard({
             !deck && "after:absolute after:inset-0 after:rounded-xl focus-visible:ring-0 focus-visible:after:ring-2 focus-visible:after:ring-emerald-cyber/70",
           )}
         >
-          {post.title}
+          {displayTitle ?? post.title}
         </a>
       </h3>
 
@@ -160,6 +175,9 @@ export function PostCard({
         </span>
 
         <div className="-mr-1.5 ml-auto flex items-center gap-0.5">
+          <ActionButton label="Leggi / Ispeziona" tone="neutral" large={deck} onClick={() => onInspect(post)}>
+            <BookOpen aria-hidden className="size-4" />
+          </ActionButton>
           <ActionButton
             label={liked ? "Mi piace (registrato)" : "Mi piace"}
             pressed={liked}
@@ -187,16 +205,26 @@ export function PostCard({
       </footer>
 
       {deck && (
-        <a
-          href={post.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => onRead(post)}
-          className="inline-flex items-center gap-2 self-start rounded-xl bg-emerald-cyber px-5 py-3 text-sm font-semibold text-obsidian outline-none transition hover:bg-emerald-400 focus-visible:ring-2 focus-visible:ring-white/80"
-        >
-          <ExternalLink aria-hidden className="size-4" />
-          Apri articolo
-        </a>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => onInspect(post)}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-cyber px-5 py-3 text-sm font-semibold text-obsidian outline-none transition hover:bg-emerald-400 focus-visible:ring-2 focus-visible:ring-white/80"
+          >
+            <BookOpen aria-hidden className="size-4" />
+            Leggi / Ispeziona
+          </button>
+          <a
+            href={post.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onRead(post)}
+            className="inline-flex items-center gap-2 rounded-xl border border-line-strong px-5 py-3 text-sm text-ink-dim outline-none transition hover:text-ink focus-visible:ring-2 focus-visible:ring-emerald-cyber/70"
+          >
+            <ExternalLink aria-hidden className="size-4" />
+            Apri articolo
+          </a>
+        </div>
       )}
     </article>
   );

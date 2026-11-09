@@ -1,14 +1,15 @@
 # PULSE.DEV
 
 Aggregatore di notizie tech con design system dark **Obsidian Terminal**.
-Fase 1: foundation, design system e ingestion reale. Fase 2: motore vettoriale a 12 dimensioni e ranking epsilon-greedy. Fase 3: Tech Stories e doppia modalità di lettura (Deck / Stream).
+Fase 1: foundation, design system e ingestion reale. Fase 2: motore vettoriale a 12 dimensioni e ranking epsilon-greedy. Fase 3: Tech Stories e doppia modalità di lettura (Deck / Stream). Fase 4: sintesi AI tradotte con OpenRouter, drawer di lettura in-app e schema Supabase.
 
 ## Avvio
 
 ```bash
 npm install
 npm run dev      # http://localhost:3000
-npm test         # test dell'algoritmo (node:test)
+npm test         # test unitari (node:test)
+npm run test:schema   # esegue supabase/schema.sql su un Postgres reale (PGlite + pgvector)
 ```
 
 Serve accesso di rete in uscita verso `hn.algolia.com`, `lobste.rs` e `www.reddit.com`.
@@ -84,3 +85,49 @@ username HN (`tptacek`) o sito (`paulgraham.com`); la scelta è salvata in Index
 
 **Deck.** Una card per schermata: rotella, trascinamento (con rotazione e scala elastiche), tasti ↑ ↓ o pulsanti.
 Soglia di 60 px, una sola card per gesto. Esc o ✕ per tornare allo Stream.
+
+## AI, traduzione e produzione (Fase 4)
+
+Copia `.env.example` in `.env.local` e imposta `OPENROUTER_API_KEY`. **Senza chiave l'app funziona comunque**:
+le sintesi diventano un'estrazione automatica dal testo originale (senza traduzione) con un avviso discreto,
+e la traduzione dei titoli del feed risulta "non disponibile".
+
+| Percorso | Ruolo |
+| --- | --- |
+| `app/api/ai/analyze/route.ts` | `POST` → sintesi strutturata (`translatedTitle`, `hook`, `threePillars`, `keySnippetOrConcept`, `communityConsensus`). Mai 5xx per problemi AI: risponde 200 con `mode: "fallback"` e un `notice` |
+| `app/api/ai/titles/route.ts` | `POST` → traduce fino a 40 titoli per richiesta |
+| `app/api/context/route.ts` | `GET ?id=<postId>` → articolo sorgente e commenti (HN, Lobsters, Reddit) |
+| `lib/ai/*` | Prompt, glossario dei termini tecnici, parsing/validazione dell'output, fallback euristico, client OpenRouter |
+| `lib/net/safe-fetch.ts`, `article.ts` | Download anti-SSRF dell'articolo ed estrazione del testo |
+| `lib/ai-cache.ts` | Cache IndexedDB: `cache_${postId}_${lang}` (30 giorni), `title_…`, `ctx_…` (6 h) |
+| `components/article-drawer.tsx` | Drawer a tutto schermo (GSAP) con toggle Sintesi ⇄ Originale (fade + blur) |
+| `components/settings-menu.tsx` | Lingua (it/en/es/fr/de) e traduzione dei titoli; persistite in IndexedDB |
+| `supabase/schema.sql` | Schema Postgres + pgvector, con `match_posts()` per la similarità coseno e RLS |
+
+**Modelli.** Principale `google/gemini-2.5-flash`, riserva `deepseek/deepseek-chat` (sovrascrivibili con
+`OPENROUTER_MODEL` / `OPENROUTER_FALLBACK_MODEL`). Si passa al secondo su errore, timeout o JSON non valido;
+con 401/402/403 ci si ferma subito (un altro modello non cambierebbe nulla).
+
+**Cache a tre livelli.** (1) IndexedDB nel browser: se la sintesi esiste, si mostra senza alcuna richiesta.
+(2) `'use cache'` lato server (24 h) sulla chiamata al modello, condivisa tra utenti. (3) Gli errori non vengono
+mai messi in cache. Le sintesi di fallback non si cachano, così configurando la chiave si passa all'AI.
+"Rigenera" salta entrambe le cache.
+
+**Termini tecnici.** Il prompt elenca i termini da non tradurre (pointer, goroutine, garbage collection, race
+condition, deadlock, zero-copy…). In più, `restoreTechnicalTerms` ripristina a posteriori quelli che il modello
+traduce comunque ("condizione di gara", "raccolta dei rifiuti", "puntatore"…), ma solo se il termine inglese è
+davvero presente nella fonte.
+
+**Sicurezza.**
+- *SSRF*: l'URL dell'articolo lo decide chi sottomette il post, quindi si scarica con un resolver che rifiuta
+  indirizzi privati/loopback/link-local (anche IPv6 e IPv4-mapped), porte non standard, credenziali nell'URL,
+  redirect rivalidati (max 3), timeout 8 s e tetto di 1,5 MB. `/api/context` accetta solo un `id` e contatta host
+  fissi; l'URL non arriva mai dal client.
+- *Prompt injection*: il testo di articoli e commenti è delimitato nel prompt e dichiarato non fidato; l'output
+  viene validato (schema, lunghezze) e reso solo come testo.
+- *Costi*: rate limit in memoria (20 analisi/min, 12 lotti di titoli/min per IP), payload e contesto limitati.
+  In un deploy multi-istanza va affiancato da un limite a monte.
+
+**Supabase.** `supabase/schema.sql` è idempotente: incollalo nello SQL Editor o copialo in
+`supabase/migrations/`. Le scritture su `posts`, `authors`, `author_posts` e `article_summaries` sono riservate
+alla `service_role`; `user_profiles` è accessibile solo al proprietario.

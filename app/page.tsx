@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Activity } from "lucide-react";
+import { SettingsMenu } from "@/components/settings-menu";
 import { FeedSection } from "@/components/feed-section";
 import { FeedSkeleton } from "@/components/feed-skeleton";
 import { StoriesSection, StoriesSkeleton } from "@/components/stories-section";
@@ -19,10 +20,13 @@ export default function HomePage() {
             <p className="font-mono text-[11px] text-ink-mute">il polso della tecnologia</p>
           </div>
         </div>
-        <p className="inline-flex items-center gap-2 font-mono text-xs text-ink-dim">
-          <span aria-hidden className="live-dot size-2 rounded-full bg-emerald-cyber" />
-          feed live
-        </p>
+        <div className="flex items-center gap-4">
+          <p className="inline-flex items-center gap-2 font-mono text-xs text-ink-dim">
+            <span aria-hidden className="live-dot size-2 rounded-full bg-emerald-cyber" />
+            feed live
+          </p>
+          <SettingsMenu />
+        </div>
       </header>
 
       <Suspense fallback={<StoriesSkeleton />}>

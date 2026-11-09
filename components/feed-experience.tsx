@@ -5,7 +5,7 @@ import gsap from "gsap";
 import { Flip } from "gsap/Flip";
 import { Observer } from "gsap/Observer";
 import { useGSAP } from "@gsap/react";
-import { ChevronDown, ChevronUp, Radar, RefreshCw, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Languages, Loader2, Radar, RefreshCw, X } from "lucide-react";
 import type { TechPost } from "@/types/feed";
 import {
   DEFAULT_EPSILON,
@@ -23,8 +23,11 @@ import {
 } from "@/lib/algorithm";
 import { publishedYear } from "@/lib/format";
 import { useTasteProfile } from "@/lib/use-taste-profile";
+import { useTranslatedTitles } from "@/lib/use-translated-titles";
 import { cn } from "@/lib/utils";
+import { ArticleDrawer } from "./article-drawer";
 import { PostCard } from "./post-card";
+import { usePrefs } from "./prefs-provider";
 import type { CardBadge } from "./semantic-badge";
 import { VectorRadar } from "./vector-radar";
 import { ViewToggle, type ViewMode } from "./view-toggle";
@@ -106,6 +109,8 @@ export function FeedExperience({ posts, fetchedAt }: FeedExperienceProps) {
   const [radarOpen, setRadarOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [mode, setMode] = useState<ViewMode>("stream");
+  const [inspect, setInspect] = useState<TechPost | null>(null);
+  const { lang, translateTitles, setTranslateTitles } = usePrefs();
   const [deckIndex, setDeckIndex] = useState(0);
 
   const { profile, ready, interact, override, setEpsilon, reset } = useTasteProfile({
@@ -130,6 +135,8 @@ export function FeedExperience({ posts, fetchedAt }: FeedExperienceProps) {
   const visible = useMemo(() => ranking.filter((r) => !hidden.has(r.post.id)), [ranking, hidden]);
   const visibleKey = visible.map((r) => r.post.id).join("|");
   const safeDeckIndex = Math.min(deckIndex, Math.max(0, visible.length - 1));
+  const visiblePosts = useMemo(() => visible.map((r) => r.post), [visible]);
+  const translated = useTranslatedTitles(visiblePosts, translateTitles, lang);
 
   useEffect(() => {
     profileRef.current = profile;
@@ -208,6 +215,28 @@ export function FeedExperience({ posts, fetchedAt }: FeedExperienceProps) {
     },
     [interact, vectorOf],
   );
+
+  /** Apre il drawer con sintesi e fonte; l'apertura conta come lettura per il profilo. */
+  const handleInspect = useCallback(
+    (post: TechPost) => {
+      interact("read", post.id, vectorOf(post));
+      setDirty(true);
+      setInspect(post);
+    },
+    [interact, vectorOf],
+  );
+
+  const closeInspect = useCallback(() => {
+    setInspect((current) => {
+      if (current) {
+        // Riporta il focus sulla card da cui si era partiti.
+        requestAnimationFrame(() =>
+          document.querySelector<HTMLElement>(`[data-flip-id="${CSS.escape(current.id)}"] h3 a`)?.focus({ preventScroll: true }),
+        );
+      }
+      return null;
+    });
+  }, []);
 
   const handleHide = useCallback(
     (post: TechPost) => {
@@ -470,6 +499,8 @@ export function FeedExperience({ posts, fetchedAt }: FeedExperienceProps) {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      // Con il drawer aperto la tastiera appartiene al drawer.
+      if (document.querySelector('[role="dialog"]')) return;
       if (event.key === "ArrowDown" || event.key === "PageDown" || event.key === "j") {
         event.preventDefault();
         gotoDeck(deckIndexRef.current + 1);
@@ -585,9 +616,41 @@ export function FeedExperience({ posts, fetchedAt }: FeedExperienceProps) {
               Ricalcola Feed
               {dirty && <span aria-hidden className="size-1.5 rounded-full bg-emerald-cyber" />}
             </button>
+            <button
+              type="button"
+              aria-pressed={translateTitles}
+              onClick={() => setTranslateTitles(!translateTitles)}
+              title={`Traduci i titoli del feed in ${lang.toUpperCase()}`}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 font-mono text-xs font-semibold outline-none transition",
+                "focus-visible:ring-2 focus-visible:ring-emerald-cyber/70",
+                translateTitles
+                  ? "border-indigo-pulse/50 bg-indigo-pulse/15 text-indigo-200"
+                  : "border-line-strong text-ink-dim hover:text-ink",
+              )}
+            >
+              {translated.status === "loading" ? (
+                <Loader2 aria-hidden className="size-3.5 animate-spin" />
+              ) : (
+                <Languages aria-hidden className="size-3.5" />
+              )}
+              <span className="max-sm:sr-only">Traduci Titoli</span>
+              <span className="uppercase">{lang}</span>
+            </button>
             <ViewToggle mode={mode} onChange={switchMode} disabled={!introDone || visible.length === 0} />
           </div>
         </div>
+
+        {translateTitles && translated.status === "unavailable" && (
+          <p role="status" className="-mt-1 mb-3 rounded-lg border border-amber-glow/30 bg-amber-glow/5 px-3 py-2 font-mono text-[11px] text-amber-glow">
+            Traduzione dei titoli non disponibile: {translated.notice}
+          </p>
+        )}
+        {translateTitles && translated.status === "ready" && translated.notice && (
+          <p role="status" className="-mt-1 mb-3 font-mono text-[11px] text-ink-mute">
+            {translated.notice}
+          </p>
+        )}
 
         <p role="status" aria-live="polite" className="sr-only">
           {announcement}
@@ -630,6 +693,8 @@ export function FeedExperience({ posts, fetchedAt }: FeedExperienceProps) {
                       bookmarked={bookmarked.has(item.post.id)}
                       reveal={!introDone}
                       variant={deck ? "deck" : "stream"}
+                      displayTitle={translated.titles[item.post.id]}
+                      onInspect={handleInspect}
                       onLike={handleLike}
                       onBookmark={handleBookmark}
                       onHide={handleHide}
@@ -685,6 +750,8 @@ export function FeedExperience({ posts, fetchedAt }: FeedExperienceProps) {
           </>
         )}
       </section>
+
+      {inspect && <ArticleDrawer key={inspect.id} post={inspect} onClose={closeInspect} />}
 
       <VectorRadar
         user={profile.userVector}

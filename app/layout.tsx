@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
+import { PrefsProvider } from "@/components/prefs-provider";
 
 export const metadata: Metadata = {
   title: "PULSE.DEV — il polso della tecnologia",
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <noscript>
           <style>{"[data-reveal]{opacity:1!important}"}</style>
         </noscript>
-        {children}
+        <PrefsProvider>{children}</PrefsProvider>
       </body>
     </html>
   );
