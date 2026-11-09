@@ -15,6 +15,7 @@
   --color-emerald-cyber: #10b981;
   --color-indigo-pulse: #6366f1;
   --color-amber-glow: #f59e0b;
+  --color-violet-archive: #8b5cf6;
 
   /* Testo (contrasto ≥ 4.5:1 su #0C0C10) */
   --color-ink: #ececf1;
@@ -79,4 +80,9 @@ body {
   .live-dot {
     animation: none;
   }
+}
+
+/* Slider "Tasso di Serendipità" */
+input[type="range"].epsilon {
+  accent-color: var(--color-emerald-cyber);
 }
